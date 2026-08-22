@@ -22,19 +22,58 @@ Nim already has Nimble for package management. nimkit fills a different role: **
 
 ## Quick start
 
-### Install from source
+### Install (one-liner)
+
+**Linux / macOS:**
 
 ```bash
-# Clone the repo
-git clone https://github.com/yourname/nimkit.git
-cd nimkit
+curl -fsSL https://raw.githubusercontent.com/DbgYard/nimkit/master/scripts/install.sh | sh
+```
 
-# Build and install
+**Windows (PowerShell):**
+
+```powershell
+irm https://raw.githubusercontent.com/DbgYard/nimkit/master/scripts/install.ps1 | iex
+```
+
+Both add `~/.nimkit/bin` (`%USERPROFILE%\.nimkit\bin` on Windows) to your PATH so `nimkit` is available in new terminals. They try to download a pre-built `nightly` binary first, then fall back to building from source (requires `nim >= 2.0.0` + `git`).
+
+**Options:**
+
+```bash
+# Build from source even if a binary exists
+curl -fsSL https://raw.githubusercontent.com/DbgYard/nimkit/master/scripts/install.sh | sh -s -- --from-source
+
+# Install a specific release tag
+curl -fsSL https://raw.githubusercontent.com/DbgYard/nimkit/master/scripts/install.sh | sh -s -- --tag v0.1.0
+```
+
+```powershell
+# Windows equivalents
+irm https://raw.githubusercontent.com/DbgYard/nimkit/master/scripts/install.ps1 | iex; Install-Nimkit -FromSource
+iex "& { $(irm https://raw.githubusercontent.com/DbgYard/nimkit/master/scripts/install.ps1) } -Tag v0.1.0"
+```
+
+**Uninstall:**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/DbgYard/nimkit/master/scripts/uninstall.sh | sh
+# Windows:
+irm https://raw.githubusercontent.com/DbgYard/nimkit/master/scripts/uninstall.ps1 | iex
+```
+
+See `scripts/` for local usage.
+
+### Install from source (manual)
+
+```bash
+git clone https://github.com/DbgYard/nimkit.git
+cd nimkit
 nim c --path:src -o:nimkit src/nimkit.nim
 
-# (Optional) Add to PATH
-# Linux/macOS: cp nimkit /usr/local/bin/
-# Windows: add the build directory to PATH
+# Add to PATH
+# Linux/macOS: cp nimkit ~/.nimkit/bin/  (or /usr/local/bin/)
+# Windows: copy nimkit.exe %USERPROFILE%\.nimkit\bin\
 ```
 
 ### Create your first project

@@ -8,10 +8,35 @@ That's it. nimkit has zero external dependencies.
 
 ## Installation
 
-### From source
+### One-liner (recommended)
+
+**Linux / macOS:**
 
 ```bash
-git clone https://github.com/yourname/nimkit.git
+curl -fsSL https://raw.githubusercontent.com/DbgYard/nimkit/master/scripts/install.sh | sh
+# or: sh scripts/install.sh --from-source --tag nightly
+```
+
+**Windows (PowerShell):**
+
+```powershell
+irm https://raw.githubusercontent.com/DbgYard/nimkit/master/scripts/install.ps1 | iex
+# or with flags:  powershell -File scripts/install.ps1 -FromSource -Tag nightly
+```
+
+Installs to `~/.nimkit/bin` (`%USERPROFILE%\.nimkit\bin` on Windows) and adds it to your PATH persistently (shell rcs on Unix, user `Path` env var on Windows). Tries a pre-built `nightly` binary first, falls back to `nim c` from source.
+
+To uninstall:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/DbgYard/nimkit/master/scripts/uninstall.sh | sh
+# Windows: irm https://raw.githubusercontent.com/DbgYard/nimkit/master/scripts/uninstall.ps1 | iex
+```
+
+### From source (manual)
+
+```bash
+git clone https://github.com/DbgYard/nimkit.git
 cd nimkit
 nim c --path:src -o:nimkit src/nimkit.nim
 ```
