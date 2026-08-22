@@ -126,7 +126,7 @@ refactor: extract validation into security module
 ### Pull request process
 
 1. Fork the repository
-2. Create a branch from `main`
+2. Create a branch from `master`
 3. Make your changes
 4. Build and test manually (there are no automated tests yet)
 5. Ensure `nim c --path:src -o:nimkit.exe src/nimkit.nim` compiles with **zero warnings**

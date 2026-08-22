@@ -2,7 +2,7 @@ name: Nightly Build
 
 on:
   push:
-    branches: [main]
+    branches: [master]
   workflow_dispatch:
 
 permissions:
@@ -111,7 +111,7 @@ jobs:
         run: |
           gh release create ${{ env.TAG_NAME }} \
             --title "Nightly ${{ steps.commit.outputs.date }} (${{ steps.commit.outputs.sha }})" \
-            --notes "Automated nightly build from \`main\` at ${{ steps.commit.outputs.sha }}." \
+            --notes "Automated nightly build from \`master\` at ${{ steps.commit.outputs.sha }}." \
             --prerelease \
             release/*
         env:

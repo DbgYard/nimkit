@@ -49,7 +49,7 @@ body:
       placeholder: |
         OS: Windows 11 / Ubuntu 22.04 / macOS 14
         Nim: 2.2.10
-        nimkit: built from main / v0.1.0
+        nimkit: built from master / v0.1.0
     validations:
       required: true
 

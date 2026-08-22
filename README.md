@@ -83,6 +83,7 @@ nimkit clean              # Remove nimcache, binaries
 | `nimkit remove <pkg>` | Remove a dependency |
 | `nimkit task [name]` | List or run tasks |
 | `nimkit init` | Initialize in current directory |
+| `nimkit ide vscode` | Setup VS Code (settings, extensions, tasks) |
 
 See [docs/commands.md](docs/commands.md) for the full reference.
 
@@ -107,6 +108,22 @@ Then:
 nimkit task          # List available tasks
 nimkit task bench    # Run a specific task
 ```
+
+## IDE support
+
+Set up VS Code with one command:
+
+```bash
+nimkit ide vscode
+```
+
+This creates `.vscode/` with:
+
+- **`settings.json`** — Nim file associations, tab size, format-on-save
+- **`extensions.json`** — Recommends the Nim VS Code extension
+- **`tasks.json`** — Exports your `.nimble` tasks as VS Code build tasks
+
+Existing `.vscode` files are synced (merged), not overwritten. New tasks from `.nimble` are appended to `tasks.json`.
 
 ## Project structure
 
