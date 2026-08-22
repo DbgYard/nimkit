@@ -24,12 +24,14 @@ jobs:
         uses: jiro4989/setup-nim-action@v2
         with:
           nim-version: '2.2.x'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build
         run: nim c --path:src -o:nimkit src/nimkit.nim
 
       - name: Verify binary
         run: ./nimkit help
+        shell: bash
 
       - name: Smoke test — create and build
         run: |
@@ -55,7 +57,7 @@ jobs:
           cat >> testproj.nimble << 'EOF'
 
           task greet, "Say hello":
-            echo "Hello from task!"
+            exec "nim --version"
           EOF
           ../nimkit task
           ../nimkit task greet

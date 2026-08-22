@@ -39,6 +39,7 @@ jobs:
         uses: jiro4989/setup-nim-action@v2
         with:
           nim-version: '2.2.x'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Verify Nim
         run: nim --version
@@ -48,6 +49,7 @@ jobs:
 
       - name: Verify binary runs
         run: ./${{ matrix.artifact }} help
+        shell: bash
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
