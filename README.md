@@ -14,8 +14,9 @@ nimkit run
 
 Nim already has Nimble for package management. nimkit fills a different role: **local project lifecycle**. Think of it as `cargo` (build/run/test) layered on top of `.nimble` files, without replacing or conflicting with Nimble itself.
 
-- **Single binary, zero deps** — built from Nim stdlib only
+- **Single binary, zero deps** — built from Nim stdlib only (nimble is reused at runtime, not bundled)
 - **`.nimble` is the config** — no new format to learn; works with existing projects
+- **Nimble-native** — delegates `build`/`test`/`task`/`dump` to nimble for full NimScript support
 - **No publishing features** — focused entirely on local dev workflow
 - **Safe by default** — path traversal prevention, shell injection protection, input validation everywhere
 
@@ -152,9 +153,14 @@ See [docs/security.md](docs/security.md) for details.
 
 ## Nimble compatibility
 
-nimkit **reads** `.nimble` files and **generates** `.nimble` files. It does not replace Nimble — you can still use `nimble install`, `nimble publish`, etc. nimkit adds its own task definitions and lifecycle commands on top.
+nimkit **reuses Nimble** where it matters and doesn't reinvent the wheel:
 
-**Parser note:** nimkit uses a simplified parser for `.nimble` files. It handles `key = value`, `requires`, `task` definitions, `@[]` arrays, and inline comments. It does not evaluate full NimScript. See [docs/configuration.md](docs/configuration.md) for what works and what doesn't.
+- **Package info** (`name`, `version`, `srcDir`, `bin`, `requires`) is read via `nimble dump --json` for full NimScript evaluation (variables, conditionals, `when` branches). Falls back to a fast manual parser when nimble isn't available.
+- **`nimkit build` / `test`** delegate to `nimble build` / `nimble test` when nimble is in PATH, so your NimScript `before build` hooks, backends (`c`/`cpp`/`js`), and `binDir` are respected. Falls back to direct `nim c` otherwise.
+- **`nimkit task`** is `nimble <task>` under the hood — full NimScript `exec`, variables, and platform conditionals work out of the box.
+- **`nimkit deps`** shows the evaluated `requires` list from nimble; `nimkit add`/`remove` still edits the `.nimble` file directly.
+
+You can still use `nimble install`, `nimble publish`, etc. alongside nimkit. See [docs/configuration.md](docs/configuration.md) for parser details and fallback behaviour.
 
 ## Documentation
 

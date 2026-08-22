@@ -22,11 +22,18 @@ nimkit uses standard `.nimble` files as its configuration format. No new config 
 
 Fields like `author`, `description`, and `license` are parsed but not used by nimkit's commands.
 
-## Parser behavior
+## How nimkit reads .nimble (nimble-native)
 
-nimkit uses a **simplified parser**, not a full NimScript evaluator. It handles:
+nimkit **reuses Nimble** for package info — it doesn't reimplement NimScript.
 
-### Supported syntax
+1. **Primary path:** `nimble dump --json` is run in the project directory. Nimble evaluates the full NimScript (variables, `when defined(...)`, `exec`, procedures) and returns structured JSON. nimkit converts that JSON to its internal `NimblePackage` (`name`, `version`, `srcDir`, `bin`, `requires`, etc.).
+2. **Fallback path:** If nimble isn't in `PATH` or `dump` fails, nimkit falls back to a fast manual parser.
+
+This means NimScript features work out of the box when nimble is present, with no limitations. The manual parser is only a fallback for offline/CI environments without nimble.
+
+### Manual parser (fallback)
+
+When nimble isn't available, nimkit handles:
 
 **Simple key = value:**
 ```nim
@@ -57,28 +64,14 @@ task test, "Run tests":
   nim c -r --path:src tests/t_example.nim
 ```
 
-**Inline comments:**
-```nim
-name = "myapp" # This is a comment
-```
+**Inline comments, block comments (`#`), trailing semicolons (`;`).**
 
-**Block comments:**
-```nim
-# This entire line is skipped
-```
+### What the fallback parser does NOT handle
 
-**Trailing semicolons:**
-```nim
-name = "myapp";  # Semicolon is stripped
-```
-
-### What the parser does NOT handle
-
-Since nimkit's parser is not a NimScript evaluator, these constructs will not work:
+These NimScript constructs are only handled via `nimble dump` (i.e., when nimble is installed):
 
 **Conditional logic:**
 ```nim
-# NOT SUPPORTED
 when defined(windows):
   bin = @["myapp.exe"]
 else:
@@ -87,44 +80,16 @@ else:
 
 **Variable interpolation:**
 ```nim
-# NOT SUPPORTED
 let myVersion = "1.0.0"
 version = myVersion
 ```
 
-**Multi-line strings:**
-```nim
-# NOT SUPPORTED
-description = """
-  A very long
-  description
-"""
-```
-
-**exec calls:**
-```nim
-# NOT SUPPORTED
-exec "nim c src/myapp.nim"
-```
-
-**Procedures and functions:**
-```nim
-# NOT SUPPORTED
-proc getBinName(): string =
-  return "myapp"
-
-bin = @[getBinName()]
-```
+**Multi-line strings, `exec` calls, procedures.**
 
 ### What this means in practice
 
-Most standard `.nimble` files work fine. Nimble files are typically simple key-value assignments. The parser handles all the common patterns you'll encounter.
-
-If your `.nimble` file uses advanced NimScript features, nimkit may not parse it correctly. In that case, you can:
-
-1. Keep using nimble for publishing and advanced features
-2. Use nimkit for local development commands
-3. Both tools read the same `.nimble` file — simple fields will work with both
+- With nimble installed (default with Nim): all `.nimble` files work, including NimScript-heavy ones.
+- Without nimble: simple `.nimble` files still work via the fallback parser; NimScript-heavy files fall back to defaults (`srcDir="src"`, etc.) and you can still use `nimkit add`/`remove` for simple edits.
 
 ## Security limits
 

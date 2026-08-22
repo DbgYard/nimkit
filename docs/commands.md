@@ -60,11 +60,11 @@ nimkit build [--release]
 
 **How it works:**
 
-1. Reads the `.nimble` file to find `srcDir` (default: `src`) and `bin` (or falls back to `name`)
-2. Compiles `<srcDir>/<bin>.nim` with `nim c`
-3. On success, the binary is placed in the project root (or `src/` depending on nim defaults)
+- If `nimble` is available: runs `nimble build -y` (with `-d:release --opt:speed` for `--release`). This respects NimScript `srcDir`, `bin`, `binDir`, backend, and `before build` hooks for full compatibility.
+- Otherwise: reads `srcDir`/`bin` from `.nimble` (fallback parser) and compiles `<srcDir>/<bin>.nim` with `nim c`.
+- On success, the binary is placed in the project root (or `src/`/`bin/` depending on nim/nimble defaults)
 
-**Exit code:** The Nim compiler's exit code.
+**Exit code:** The Nim/nimble compiler's exit code.
 
 ---
 
@@ -108,7 +108,12 @@ nimkit test [--verbose]
 |------|-------|-------------|
 | `--verbose` | `-v` | Print full output of failing tests |
 
-**Test discovery:**
+**How it works:**
+
+- If `nimble` is available: runs `nimble test -y` (full NimScript support).
+- Otherwise: discovers tests manually:
+
+**Test discovery (fallback):**
 
 - Scans the `tests/` directory (non-recursive)
 - Matches files: `t*.nim` where the name has at least 2 characters
@@ -226,7 +231,7 @@ myapp v0.1.0
 └── asynctools
 ```
 
-Note: `nim` itself is filtered out of the display.
+Note: `nim` itself is filtered out. When `nimble` is available, dependencies are shown from `nimble dump --json` (evaluated NimScript); otherwise from the manual parser.
 
 ---
 
@@ -299,16 +304,15 @@ Tasks (3):
   bench        Run benchmarks
 ```
 
-**With `<name>`:** Executes the named task, running each body line as a shell command.
+**With `<name>`:** Delegates to `nimble <task>` (full NimScript — `exec`, variables, `when` branches work). Falls back to manual listing only.
 
 ```bash
 nimkit task bench
-# Running task 'bench' (1 command(s))...
-#   > nim c -r --d:release --path:src tests/bench.nim
+# Running task 'bench' via nimble...
 # ...
 ```
 
-**Exit code:** The exit code of the first failing command, or 0 if all succeed.
+**Exit code:** The task's exit code.
 
 ---
 

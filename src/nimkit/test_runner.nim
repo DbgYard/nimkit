@@ -1,5 +1,5 @@
 import std/[os, strutils, strformat, osproc, times, algorithm, streams]
-import nimkit/[nimble_parser, security]
+import nimkit/[nimble_parser, security, nimble_integration]
 
 type
   TestResult = object
@@ -56,7 +56,12 @@ proc runSingleTest*(testFile: string, pkg: NimblePackage, projectRoot: string): 
   )
 
 proc runAllTests*(pkg: NimblePackage, projectRoot: string, verbose: bool = false): int =
-  ## Run all tests and return the exit code (0 = all passed).
+  ## Run all tests. Reuses `nimble test` when available for full NimScript
+  ## compatibility, falls back to manual discovery.
+  if isNimbleAvailable():
+    let code = nimbleTest(projectRoot)
+    if code != -1:
+      return code
   let testDir = getTestDir(pkg, projectRoot)
   let tests = discoverTests(testDir)
 
@@ -92,7 +97,7 @@ proc runAllTests*(pkg: NimblePackage, projectRoot: string, verbose: bool = false
   return 0
 
 proc runAllTests*(nimblePath: string, verbose: bool = false): int =
-  ## Run all tests from a .nimble file path.
-  let pkg = parseNimble(nimblePath)
+  ## Run all tests from a .nimble file path. Prefers nimble dump for accuracy.
+  let pkg = getPackageInfo(nimblePath)
   let projectRoot = getProjectRoot(nimblePath)
   return runAllTests(pkg, projectRoot, verbose)

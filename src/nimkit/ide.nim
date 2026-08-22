@@ -1,5 +1,5 @@
 import std/[os, strutils, strformat, json]
-import nimkit/nimble_parser
+import nimkit/[nimble_parser, nimble_integration]
 
 const
   nimExtensions = [
@@ -181,9 +181,15 @@ proc setupIDE*(nimblePath: string, ide: string) =
     echo "Supported: vscode"
     quit(1)
 
-  let pkg = parseNimble(nimblePath)
+  var pkg = getPackageInfo(nimblePath)
   let projectRoot = getProjectRoot(nimblePath)
   let vscodeDir = projectRoot / ".vscode"
+
+  # Use evaluated tasks from nimble when available for full NimScript accuracy
+  if isNimbleAvailable():
+    let evaluatedTasks = nimbleTasksList(projectRoot)
+    if evaluatedTasks.len > 0:
+      pkg.tasks = evaluatedTasks
 
   echo "Setting up VS Code for ", pkg.name, "..."
 

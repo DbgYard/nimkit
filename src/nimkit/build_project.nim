@@ -1,5 +1,5 @@
 import std/[os, strutils, strformat, osproc]
-import nimkit/[nimble_parser, security]
+import nimkit/[nimble_parser, security, nimble_integration]
 
 type
   BuildError* = object of CatchableError
@@ -18,7 +18,15 @@ proc runNimCompiler*(nimArgs: seq[string], projectRoot: string): int =
 
 proc buildProject*(pkg: NimblePackage, projectRoot: string,
     release: bool = false): int =
-  ## Build the project using the Nim compiler.
+  ## Build the project. Reuses `nimble build` when available for full
+  ## NimScript compatibility, falls back to direct `nim c`.
+  if isNimbleAvailable():
+    let binArg = if pkg.bin.len > 0: pkg.bin[0] else: ""
+    let code = nimbleBuild(projectRoot, release, binArg)
+    if code != -1:
+      return code
+    # fall through to manual build if nimble not available
+
   let srcDir = getSourceDir(pkg, projectRoot)
   let mainBin = getMainBinary(pkg)
 
@@ -53,7 +61,8 @@ proc buildProject*(pkg: NimblePackage, projectRoot: string,
   return runNimCompiler(nimArgs, projectRoot)
 
 proc buildProject*(nimblePath: string, release: bool = false): int =
-  ## Build the project from a .nimble file path.
-  let pkg = parseNimble(nimblePath)
+  ## Build the project from a .nimble file path. Prefers nimble dump for
+  ## accurate package info (handles NimScript), falls back to parser.
+  let pkg = getPackageInfo(nimblePath)
   let projectRoot = getProjectRoot(nimblePath)
   return buildProject(pkg, projectRoot, release)

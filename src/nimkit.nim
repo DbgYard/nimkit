@@ -1,5 +1,5 @@
 import std/[os, strutils, strformat, osproc, algorithm, streams]
-import nimkit/[nimble_parser, new_project, build_project, test_runner, security, ide]
+import nimkit/[nimble_parser, new_project, build_project, test_runner, security, ide, nimble_integration]
 
 proc printUsage() =
   echo """
@@ -104,7 +104,7 @@ proc cmdRun(args: seq[string]) =
     echo "Error: no .nimble file found in current directory"
     quit(1)
 
-  let pkg = parseNimble(nimblePath)
+  let pkg = getPackageInfo(nimblePath)
   let projectRoot = getProjectRoot(nimblePath)
   let mainBin = getMainBinary(pkg)
 
@@ -183,7 +183,7 @@ proc cmdCheck(args: seq[string]) =
     echo "Error: no .nimble file found in current directory"
     quit(1)
 
-  let pkg = parseNimble(nimblePath)
+  let pkg = getPackageInfo(nimblePath)
   let projectRoot = getProjectRoot(nimblePath)
   let srcDir = getSourceDir(pkg, projectRoot)
 
@@ -312,7 +312,7 @@ proc cmdClean(args: seq[string]) =
     echo "Error: no .nimble file found in current directory"
     quit(1)
 
-  let pkg = parseNimble(nimblePath)
+  let pkg = getPackageInfo(nimblePath)
   let projectRoot = getProjectRoot(nimblePath)
   let mainBin = getMainBinary(pkg)
 
@@ -415,7 +415,7 @@ proc cmdDeps(args: seq[string]) =
     echo "Error: no .nimble file found in current directory"
     quit(1)
 
-  let pkg = parseNimble(nimblePath)
+  let pkg = getPackageInfo(nimblePath)
 
   var showTree = false
   var showVersions = false
@@ -480,7 +480,7 @@ proc cmdAdd(args: seq[string]) =
       echo "Error: invalid version constraint"
       quit(1)
 
-  let pkg = parseNimble(nimblePath)
+  let pkg = getPackageInfo(nimblePath)
 
   # Check if dependency already exists (exact match or same name with any version)
   for dep in pkg.requires:
@@ -586,11 +586,17 @@ proc cmdTask(args: seq[string]) =
     echo "Error: no .nimble file found in current directory"
     quit(1)
 
-  let pkg = parseNimble(nimblePath)
+  let pkg = getPackageInfo(nimblePath)
 
   if args.len == 0:
-    # List available tasks
-    if pkg.tasks.len == 0:
+    # List available tasks - prefer nimble for full NimScript evaluation
+    var tasksToShow = pkg.tasks
+    if isNimbleAvailable():
+      let projectRoot = getProjectRoot(nimblePath)
+      let nimbleTasks = nimbleTasksList(projectRoot)
+      if nimbleTasks.len > 0:
+        tasksToShow = nimbleTasks
+    if tasksToShow.len == 0:
       echo "No tasks defined in .nimble file."
       echo ""
       echo "Add tasks to your .nimble file like:"
@@ -598,8 +604,8 @@ proc cmdTask(args: seq[string]) =
       echo "    exec \"nim c src/myapp.nim\""
       return
 
-    echo fmt"Tasks ({pkg.tasks.len}):"
-    for task in pkg.tasks:
+    echo fmt"Tasks ({tasksToShow.len}):"
+    for task in tasksToShow:
       echo fmt"  {task.name:12s} {task.description}"
     return
 
@@ -607,55 +613,14 @@ proc cmdTask(args: seq[string]) =
   if not isValidTaskName(taskName):
     echo fmt"Error: invalid task name '{taskName}'"
     quit(1)
-  var task: NimbleTask
-  var found = false
-  for t in pkg.tasks:
-    if t.name == taskName:
-      task = t
-      found = true
-      break
 
-  if not found:
-    echo fmt"Task '{taskName}' not found."
-    echo ""
-    echo "Available tasks:"
-    for t in pkg.tasks:
-      echo fmt"  {t.name:12s} {t.description}"
-    quit(1)
-
-  # Strip leading/trailing whitespace and empty lines from task body
-  var cleanBody: seq[string] = @[]
-  for bodyLine in task.body:
-    let stripped = bodyLine.strip()
-    if stripped.len > 0:
-      # Limit line length and reject control chars
-      if stripped.len > 1024 or '\0' in stripped:
-        echo "Error: task line too long or contains null bytes, skipping"
-        continue
-      cleanBody.add(stripped)
-
-  if cleanBody.len == 0:
-    echo fmt"Task '{taskName}' has no commands."
-    quit(1)
-
-  # Execute each line in the task body - explicitly via shell with warning
-  echo fmt"Running task '{taskName}' ({cleanBody.len} command(s))..."
-  for line in cleanBody:
-    echo fmt"  > {line}"
-  for line in cleanBody:
-    var exitCode: int
-    when defined(windows):
-      # Shell-free invocation via cmd.exe /c
-      let p = startProcess("cmd", args = @["/c", line], options = {poUsePath, poParentStreams})
-      exitCode = p.waitForExit()
-      p.close()
-    else:
-      let p = startProcess("/bin/sh", args = @["-c", line], options = {poUsePath, poParentStreams})
-      exitCode = p.waitForExit()
-      p.close()
-    if exitCode != 0:
-      echo fmt"Task '{taskName}' failed on: {line}"
-      quit(exitCode)
+  # Delegate to nimble for full NimScript evaluation (exec, variables, conditionals)
+  echo fmt"Running task '{taskName}' via nimble..."
+  let p = startProcess("nimble", args = @[taskName], options = {poUsePath, poParentStreams})
+  let exitCode = p.waitForExit()
+  p.close()
+  if exitCode != 0:
+    quit(exitCode)
 
 proc cmdInit() =
   # Check if there's already a .nimble file
@@ -727,7 +692,7 @@ proc printMenu() =
   echo ""
 
   if hasNimble:
-    let pkg = parseNimble(nimblePath)
+    let pkg = getPackageInfo(nimblePath)
     let displayName = if pkg.name.len > 0: pkg.name else: extractFilename(nimblePath).replace(".nimble", "")
     echo fmt"Project: {displayName}"
     if pkg.version.len > 0: echo fmt"Version: {pkg.version}"
@@ -870,7 +835,7 @@ proc runInteractive() =
 
   of "12":
     # task
-    let pkg = parseNimble(nimblePath)
+    let pkg = getPackageInfo(nimblePath)
     if pkg.tasks.len == 0:
       echo "No tasks defined in .nimble file."
       return

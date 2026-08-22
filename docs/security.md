@@ -134,11 +134,11 @@ For anyone reviewing nimkit's security:
 
 ## Known limitations
 
-1. **Task execution is not sandboxed.** Task body lines are executed through the system shell. If you run a malicious task from an untrusted `.nimble` file, it can execute arbitrary commands. This is by design — Nimble tasks are intended to run arbitrary commands.
+1. **Task execution is not sandboxed.** `nimkit task` delegates to `nimble <task>`. Nimble evaluates the full NimScript and then executes the task's commands through the shell. If you run a malicious task from an untrusted `.nimble` file, it can execute arbitrary commands. This is by design — Nimble tasks are intended to run arbitrary commands.
 
 2. **Source code is not sandboxed.** nimkit compiles and runs your Nim source code. If your source code is malicious, it will execute. This is also by design — nimkit is a development tool for your own code.
 
-3. **The `.nimble` parser is simplified.** It doesn't evaluate NimScript. If a `.nimble` file uses advanced features (conditionals, exec calls, variable interpolation), the parser may not extract all fields correctly. This is a correctness limitation, not a security one — unparseable fields are ignored or fall back to defaults.
+3. **`.nimble` is evaluated by Nimble when available.** When `nimble` is in `PATH`, `nimkit` runs `nimble dump --json` / `nimble build` / `nimble test`, which evaluates the `.nimble` NimScript. A malicious `.nimble` can execute arbitrary code at `dump` time, just as `nimble build` would. This is intentional for full NimScript compatibility (`when`, `exec`, variables). When nimble is not available, nimkit falls back to a safe manual parser that never evaluates NimScript.
 
 ## Reporting security issues
 
