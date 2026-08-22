@@ -1,0 +1,67 @@
+name: Bug Report
+description: Report a bug in nimkit
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug. Please fill out the sections below.
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: Steps to reproduce the bug.
+      placeholder: |
+        1. Run `nimkit new testproj`
+        2. `cd testproj`
+        3. Run `nimkit build`
+        4. See error...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect to happen?
+      description: The behavior you expected.
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: What actually happened?
+      description: The actual output or error message.
+      placeholder: |
+        ```
+        Error: source file 'src/testproj.nim' not found
+        ```
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Your OS and Nim version.
+      placeholder: |
+        OS: Windows 11 / Ubuntu 22.04 / macOS 14
+        Nim: 2.2.10
+        nimkit: built from main / v0.1.0
+    validations:
+      required: true
+
+  - type: textarea
+    id: nimble
+    attributes:
+      label: .nimble file contents
+      description: If the bug involves project configuration, paste your `.nimble` file.
+      render: nim
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Additional context
+      description: Anything else that might help (screenshots, logs, etc.)

@@ -1,0 +1,7 @@
+nimcache/
+nimblecache/
+*.exe
+*.out
+*.app
+bin/
+build/
