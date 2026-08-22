@@ -1,5 +1,5 @@
 import std/[os, strutils, strformat, osproc, algorithm, streams]
-import nimkit/[nimble_parser, new_project, build_project, test_runner, security]
+import nimkit/[nimble_parser, new_project, build_project, test_runner, security, ide]
 
 proc printUsage() =
   echo """
@@ -7,6 +7,7 @@ nimkit - A cargo-like project lifecycle tool for Nim
 
 Usage:
   nimkit <command> [options]
+  nimkit              Interactive mode (no args)
 
 Commands:
   new <name>         Create a new project
@@ -25,6 +26,7 @@ Commands:
   task               List available tasks
   task <name>        Run a task
   init               Initialize nimkit in current directory
+  ide <ide>          Setup IDE (e.g. nimkit ide vscode)
   help               Show this help message
 
 Options:
@@ -701,11 +703,212 @@ requires "nim >= 2.0.0"
   echo ""
   echo "nimkit initialized!"
 
+proc cmdIDE(args: seq[string]) =
+  let nimblePath = findNimbleFileInCwd()
+  if nimblePath.len == 0:
+    echo "Error: no .nimble file found in current directory"
+    echo "Run 'nimkit new <name>' or 'nimkit init' first."
+    quit(1)
+
+  if args.len == 0:
+    echo "Usage: nimkit ide <ide>"
+    echo ""
+    echo "Supported IDEs:"
+    echo "  vscode    Visual Studio Code"
+    quit(1)
+
+  setupIDE(nimblePath, args[0])
+
+proc printMenu() =
+  let nimblePath = findNimbleFileInCwd()
+  let hasNimble = nimblePath.len > 0
+
+  echo "nimkit - A cargo-like project lifecycle tool for Nim"
+  echo ""
+
+  if hasNimble:
+    let pkg = parseNimble(nimblePath)
+    let displayName = if pkg.name.len > 0: pkg.name else: extractFilename(nimblePath).replace(".nimble", "")
+    echo fmt"Project: {displayName}"
+    if pkg.version.len > 0: echo fmt"Version: {pkg.version}"
+    if pkg.description.len > 0: echo fmt"Description: {pkg.description}"
+    echo ""
+
+  echo "Commands:"
+  echo ""
+  echo "  [1]  new              Create a new project"
+  echo "  [2]  init             Initialize nimkit in current directory"
+  echo ""
+
+  if hasNimble:
+    echo "  [3]  build            Build the project"
+    echo "  [4]  build --release  Build with release optimizations"
+    echo "  [5]  run              Build and run the project"
+    echo "  [6]  test             Run all tests"
+    echo "  [7]  check            Check source file(s)"
+    echo "  [8]  clean            Remove build artifacts"
+    echo ""
+    echo "  [9]  deps             List dependencies"
+    echo "  [10] add              Add a dependency"
+    echo "  [11] remove           Remove a dependency"
+    echo "  [12] task             List or run tasks"
+    echo ""
+    echo "  [13] ide              Setup IDE (VS Code)"
+  else:
+    echo "  (No .nimble file found — create or init a project first)"
+
+  echo ""
+  echo "  [h]  help             Show full help"
+  echo "  [q]  quit"
+  echo ""
+
+proc prompt(question: string): string =
+  stdout.write question
+  result = stdin.readLine().strip()
+
+proc promptChoice(max: int): string =
+  while true:
+    let input = prompt("Choose> ")
+    if input.len == 0: continue
+    if input == "q" or input == "quit" or input == "exit":
+      echo "Goodbye!"
+      quit(0)
+    if input == "h" or input == "help":
+      printUsage()
+      return ""
+    # Check if it's a number
+    var isNum = true
+    for c in input:
+      if c < '0' or c > '9':
+        isNum = false
+        break
+    if isNum:
+      let num = parseInt(input)
+      if num >= 1 and num <= max:
+        return $num
+      else:
+        echo fmt"Invalid choice (1-{max})"
+    else:
+      echo "Invalid choice. Enter a number, 'h' for help, or 'q' to quit."
+
+proc runInteractive() =
+  printMenu()
+
+  let nimblePath = findNimbleFileInCwd()
+  let hasNimble = nimblePath.len > 0
+  let maxChoice = if hasNimble: 13 else: 2
+
+  let choice = promptChoice(maxChoice)
+  if choice.len == 0: return
+
+  case choice
+  of "1":
+    # new project
+    let name = prompt("Project name: ")
+    if name.len == 0:
+      echo "Cancelled."
+      return
+    let libInput = prompt("Library project? (y/N): ")
+    let isLib = libInput == "y" or libInput == "Y"
+    cmdNew(@[name] & (if isLib: @["--lib"] else: @[]))
+
+  of "2":
+    # init
+    cmdInit()
+
+  of "3":
+    # build
+    cmdBuild(@[])
+
+  of "4":
+    # build --release
+    cmdBuild(@["--release"])
+
+  of "5":
+    # run
+    cmdRun(@[])
+
+  of "6":
+    # test
+    let verbose = prompt("Verbose output? (y/N): ")
+    cmdTest((if verbose == "y" or verbose == "Y": @["-v"] else: @[]))
+
+  of "7":
+    # check
+    let all = prompt("Check all files? (y/N): ")
+    cmdCheck((if all == "y" or all == "Y": @["--all"] else: @[]))
+
+  of "8":
+    # clean
+    let docs = prompt("Also remove docs? (y/N): ")
+    cmdClean((if docs == "y" or docs == "Y": @["--docs"] else: @[]))
+
+  of "9":
+    # deps
+    let tree = prompt("Show as tree? (y/N): ")
+    cmdDeps((if tree == "y" or tree == "Y": @["--tree"] else: @[]))
+
+  of "10":
+    # add dependency
+    let pkgName = prompt("Package name: ")
+    if pkgName.len == 0:
+      echo "Cancelled."
+      return
+    let version = prompt("Version constraint (optional): ")
+    var args = @[pkgName]
+    if version.len > 0:
+      args.add(version)
+    cmdAdd(args)
+
+  of "11":
+    # remove dependency
+    let pkgName = prompt("Package name to remove: ")
+    if pkgName.len == 0:
+      echo "Cancelled."
+      return
+    cmdRemove(@[pkgName])
+
+  of "12":
+    # task
+    let pkg = parseNimble(nimblePath)
+    if pkg.tasks.len == 0:
+      echo "No tasks defined in .nimble file."
+      return
+    echo ""
+    for i, task in pkg.tasks:
+      echo fmt"  [{i+1}] {task.name:12s} {task.description}"
+    echo ""
+    let taskChoice = prompt("Task number (or name): ")
+    if taskChoice.len == 0:
+      echo "Cancelled."
+      return
+    # Check if it's a number
+    var isNum = true
+    for c in taskChoice:
+      if c < '0' or c > '9':
+        isNum = false
+        break
+    if isNum:
+      let num = parseInt(taskChoice)
+      if num >= 1 and num <= pkg.tasks.len:
+        cmdTask(@[pkg.tasks[num-1].name])
+      else:
+        echo "Invalid task number."
+    else:
+      cmdTask(@[taskChoice])
+
+  of "13":
+    # ide
+    cmdIDE(@["vscode"])
+
+  else:
+    echo "Unknown choice."
+
 proc main() =
   let args = commandLineParams()
 
   if args.len == 0:
-    printUsage()
+    runInteractive()
     return
 
   let cmd = args[0]
@@ -734,6 +937,8 @@ proc main() =
     cmdTask(cmdArgs)
   of "init":
     cmdInit()
+  of "ide":
+    cmdIDE(cmdArgs)
   of "help", "-h", "--help":
     printUsage()
   else:
