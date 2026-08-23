@@ -10,8 +10,9 @@ proc isNimbleAvailable*(): bool =
 proc nimbleDumpJson*(projectRoot: string): JsonNode =
   ## Run `nimble dump --json` in projectRoot and return parsed JSON.
   ## Returns nil on failure.
+  ## Uses --useSystemNim to avoid "No nim version matching..." download prompt.
   try:
-    let p = startProcess("nimble", args = @["dump", "--json"],
+    let p = startProcess("nimble", args = @["--useSystemNim", "-y", "dump", "--json"],
       workingDir = projectRoot, options = {poUsePath, poStdErrToStdOut})
     let output = readAll(p.outputStream)
     let code = p.waitForExit()
@@ -91,6 +92,7 @@ proc getPackageInfo*(nimblePath: string): NimblePackage =
 proc nimbleBuild*(projectRoot: string, release: bool = false, binName: string = ""): int =
   ## Delegate build to `nimble build`. Returns exit code.
   ## Returns -1 if nimble not available.
+  ## Uses --useSystemNim to avoid "No nim version matching..." prompt.
   if not isNimbleAvailable():
     return -1
   var args = @["build", "-y"]
@@ -106,6 +108,7 @@ proc nimbleBuild*(projectRoot: string, release: bool = false, binName: string = 
 
 proc nimbleTest*(projectRoot: string): int =
   ## Delegate test to `nimble test -y`. Returns -1 if not available.
+  ## Uses --useSystemNim to avoid extra nim download.
   if not isNimbleAvailable():
     return -1
   let p = startProcess("nimble", args = @["test", "-y"],
@@ -116,10 +119,11 @@ proc nimbleTest*(projectRoot: string): int =
 proc nimbleTasksList*(projectRoot: string): seq[NimbleTask] =
   ## Get tasks via `nimble tasks`. Returns empty on failure.
   ## Nimble prints tasks as: "taskName    description" per line.
+  ## Uses --useSystemNim to silence nim version prompt.
   if not isNimbleAvailable():
     return @[]
   try:
-    let p = startProcess("nimble", args = @["tasks"],
+    let p = startProcess("nimble", args = @["--useSystemNim", "-y", "tasks"],
       workingDir = projectRoot, options = {poUsePath, poStdErrToStdOut})
     let output = readAll(p.outputStream)
     let code = p.waitForExit()
